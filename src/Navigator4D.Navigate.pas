@@ -28,6 +28,7 @@ type
     FHistoryTemplates: TStack<TComponent>;
     FInitRender: TFmxObject;
     procedure _Render(AHistory: THistoryNavigator; AParams: INavigator4DParams = nil);
+    procedure _UnRender(AHistory: THistoryNavigator);
     procedure _Pop;
     procedure _PushNamed(APath: String);
   public
@@ -41,6 +42,7 @@ type
     procedure PopAndPushNamed(APath: String; AParams: INavigator4DParams = nil);
     procedure PopUntilAndPushNamed(APath, AToPath: String; AParams: INavigator4DParams = nil);
     procedure InitRender(AObject: TFmxObject);
+    function HistoryCount: Integer;
   end;
 
 implementation
@@ -63,27 +65,23 @@ begin
   inherited;
 end;
 
+function TNavigator4DTo.HistoryCount: Integer;
+begin
+  Result := FHistory.Count;
+end;
+
 procedure TNavigator4DTo.InitRender(AObject: TFmxObject);
 begin
   FInitRender := AObject;
 end;
 
 procedure TNavigator4DTo.Navigate(APath: String; AParams: INavigator4DParams = nil);
-var
-  history: THistoryNavigator;
 begin
   FInitRender.RemoveObject(0);
 
   while (FHistory.Count > 0) do
     _Pop;
-//  begin
-//    history := FHistory.Pop;
-//    history.PersistentInstance.Free;
-//  end;
 
-//  history.Path := APath;
-//  history.PersistentInstance := TNavigator4D.Router.CreateInstancePersistent(APath);
-//  FHistory.Push(history);
   _PushNamed(APath);
 
   _Render(FHistory.Peek, AParams);
@@ -98,17 +96,11 @@ begin
 end;
 
 procedure TNavigator4DTo.Pop;
-//var
-//  history: THistoryNavigator;
 begin
   FInitRender.RemoveObject(0);
 
   if (FHistory.Count > 1) then
     _Pop;
-//  begin
-//    history := FHistory.Pop;
-//    history.PersistentInstance.Free;
-//  end;
 
   _Render(FHistory.Peek);
 end;
@@ -135,12 +127,10 @@ begin
 
   history := FHistory.Peek;
   while (FHistory.Count > 1) and (not history.Path.Equals(APath)) do
+  begin
     _Pop;
-//  begin
-//    FHistory.Pop;
-//    if (FHistory.Count > 1) then
-//      history := FHistory.Peek;
-//  end;
+    history := FHistory.Peek;
+  end;
 
   if (FHistory.Count > 0) then
     _Render(FHistory.Peek);
@@ -158,7 +148,10 @@ begin
 
   history := FHistory.Peek;
   while (FHistory.Count > 1) and (not history.Path.Equals(APath)) do
+  begin
     _Pop;
+    history := FHistory.Peek;
+  end;
   _PushNamed(AToPath);
 
   if (FHistory.Count > 0) then
@@ -166,14 +159,9 @@ begin
 end;
 
 procedure TNavigator4DTo.PushNamed(APath: String; AParams: INavigator4DParams = nil);
-//var
-//  history: THistoryNavigator;
 begin
   FInitRender.RemoveObject(0);
 
-//  history.Path := APath;
-//  history.PersistentInstance := TNavigator4D.Router.CreateInstancePersistent(APath);
-//  FHistory.Push(history);
   _PushNamed(APath);
 
   _Render(FHistory.Peek, AParams);
@@ -222,26 +210,38 @@ begin
   end;
 end;
 
+procedure TNavigator4DTo._UnRender(AHistory: THistoryNavigator);
+var
+  component: INavigator4DComponent;
+begin
+  if not Supports(AHistory.PersistentInstance, INavigator4DComponent, component) then
+    raise Exception.Create('Object does not implement INavigator4DComponent interface');
+
+  component.UnRender;
+end;
+
 procedure TNavigator4DTo._Pop;
 var
   history: THistoryNavigator;
 begin
-//  if (FHistory.Count > 1) then
-//  begin
-    history := FHistory.Pop;
-    history.PersistentInstance.Free;
-    if Assigned(history.TemplateInstance) then
-    begin
-      FHistoryTemplates.Pop;
-      history.TemplateInstance.Free;
-    end;
-//  end;
+  _UnRender(FHistory.Peek);
+
+  history := FHistory.Pop;
+  history.PersistentInstance.Free;
+  if Assigned(history.TemplateInstance) then
+  begin
+    FHistoryTemplates.Pop;
+    history.TemplateInstance.Free;
+  end;
 end;
 
 procedure TNavigator4DTo._PushNamed(APath: String);
 var
   history: THistoryNavigator;
 begin
+  if (FHistory.Count > 0) then
+    _UnRender(FHistory.Peek);
+
   history.Path := APath;
   history.PersistentInstance := TNavigator4D.Router.CreateInstancePersistent(APath);
 

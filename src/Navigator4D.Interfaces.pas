@@ -33,6 +33,7 @@ type
   INavigator4DComponent = interface
   ['{4341F8E4-B48B-42CE-9B07-78BB6E1D9E97}']
     function Render: TFmxObject;
+    procedure UnRender;
   end;
 
   INavigator4DTemplate = interface
@@ -66,6 +67,7 @@ type
     procedure PopAndPushNamed(APath: String; AParams: INavigator4DParams = nil);
     procedure PopUntilAndPushNamed(APath, AToPath: String; AParams: INavigator4DParams = nil);
     procedure InitRender(AObject: TFmxObject);
+    function HistoryCount: Integer;
   end;
 
 implementation
